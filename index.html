@@ -493,17 +493,33 @@ async function handleAuth() {
   const btn = document.getElementById('auth-btn');
   if (!email || !password) { errEl.textContent = 'Please enter email and password.'; return; }
   btn.textContent = '…'; btn.disabled = true;
-  let error;
+  errEl.textContent = '';
+
   if (authMode === 'signin') {
-    ({ error } = await sb.auth.signInWithPassword({ email, password }));
+    const { error } = await sb.auth.signInWithPassword({ email, password });
+    btn.textContent = 'Sign in'; btn.disabled = false;
+    if (error) {
+      errEl.style.color = 'var(--red)';
+      if (error.message.toLowerCase().includes('confirm')) {
+        errEl.textContent = 'Email not confirmed — go to Supabase Auth > Users, find the account and manually confirm it, then try again.';
+      } else {
+        errEl.textContent = error.message;
+      }
+    }
   } else {
-    ({ error } = await sb.auth.signUp({ email, password }));
-    if (!error) { errEl.style.color = 'var(--accent-bright)'; errEl.textContent = 'Account created! You can now sign in.'; btn.textContent = 'Create account'; btn.disabled = false; return; }
+    const { error } = await sb.auth.signUp({ email, password });
+    btn.textContent = 'Create account'; btn.disabled = false;
+    if (error) {
+      errEl.style.color = 'var(--red)';
+      errEl.textContent = error.message;
+    } else {
+      const { error: signInErr } = await sb.auth.signInWithPassword({ email, password });
+      if (signInErr) {
+        errEl.style.color = 'var(--accent-bright)';
+        errEl.textContent = 'Account created! Switch to Sign in and sign in now.';
+      }
+    }
   }
-  btn.textContent = authMode === 'signin' ? 'Sign in' : 'Create account';
-  btn.disabled = false;
-  errEl.style.color = 'var(--red)';
-  errEl.textContent = error ? error.message : '';
 }
 
 async function signOut() {
